@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>САРП ИЭТР 2D - Быстрое перемещение</title>
+    <style>
+        * {
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #2b2b2b;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 340px;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #3c3c3c;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 20px 15px;
+            background: #252526;
+            border-bottom: 1px solid #3c3c3c;
+        }
+
+        .sidebar-header h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.4rem;
+        }
+
+        .add-btn {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .add-btn:hover {
+            background: #1177bb;
+        }
+
+        .smart-align-btn {
+            background: #6a1b9a;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .smart-align-btn:hover {
+            background: #7c1fae;
+        }
+
+        .annotation-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .annotation-item {
+            background: #2d2d2d;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            border-left: 4px solid #0e639c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            transition: 0.1s;
+        }
+
+        .annotation-item.highlight {
+            background: #264f78;
+            border-left-color: #ffcc00;
+            box-shadow: 0 0 0 1px #ffcc00;
+        }
+
+        .ann-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ann-id {
+            font-weight: bold;
+            background: #3c3c3c;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .ann-name {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 13px;
+            padding: 4px;
+            border-bottom: 1px dashed #5a5a5a;
+            min-width: 80px;
+        }
+
+        .ann-name:focus {
+            outline: none;
+            border-bottom: 1px solid #0e639c;
+        }
+
+        .delete-ann-btn {
+            background: #d32f2f;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: 0.2s;
+        }
+
+        .delete-ann-btn:hover {
+            background: #f44336;
+            transform: scale(1.05);
+        }
+
+        .viewer {
+            flex: 1;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            padding: 12px;
+            background: #252526;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .load-btn {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .info {
+            color: #cccccc;
+            font-size: 13px;
+        }
+
+        .image-container {
+            flex: 1;
+            position: relative;
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #modelImage {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .annotation-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .circle-marker {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: #ff5722;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: grab;
+            box-shadow: 0 2px 6px black;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            pointer-events: auto;
+            z-index: 20;
+            will-change: left, top;
+        }
+
+        .circle-marker:active {
+            cursor: grabbing;
+        }
+
+        .circle-marker.highlight {
+            background: #ffcc00;
+            color: #1e1e1e;
+            box-shadow: 0 0 0 3px rgba(255,204,0,0.6);
+            transform: translate(-50%, -50%) scale(1.15);
+        }
+
+        .dot-marker {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ffaa44;
+            border-radius: 50%;
+            cursor: grab;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px black;
+            transform: translate(-50%, -50%);
+            pointer-events: auto;
+            z-index: 20;
+            will-change: left, top;
+        }
+
+        .dot-marker:active {
+            cursor: grabbing;
+        }
+
+        .dot-marker.highlight {
+            background: #ffcc00;
+            box-shadow: 0 0 0 3px rgba(255,204,0,0.6);
+            transform: translate(-50%, -50%) scale(1.3);
+        }
+
+        .confirm-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            border: 1px solid #555;
+        }
+
+        .confirm-toast button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .confirm-yes {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .confirm-no {
+            background: #555;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h2>Список сносок</h2>
+        <button class="add-btn" id="addAnnotationBtn">➕ Добавить сноску</button>
+        <button class="smart-align-btn" id="smartAlignBtn">Выровнять (без пересечений)</button>
+    </div>
+    <div class="annotation-list" id="annotationList">
+        <div style="color: #aaa; padding: 20px; text-align: center;">Нет сносок<br>Нажмите "Добавить"</div>
+    </div>
+</div>
+
+<div class="viewer">
+    <div class="toolbar">
+        <button class="load-btn" id="loadImageBtn">📁 Загрузить фото модели</button>
+        <span class="info">САПР ИЭТР 2D</span>
+    </div>
+    <div class="image-container" id="imageContainer">
+        <div style="color: #888; text-align: center; padding: 50px;">
+            <p>🖼️ Фото модели не загружено</p>
+            <p style="font-size:12px">Нажмите "Загрузить фото" или перетащите изображение сюда</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let annotations = [];
+    let nextInternalId = 1;
+    let imageLoaded = false;
+    let currentImageElement = null;
+    let wrapper = null;
+    let pendingDeleteIndex = null;
+    let currentHighlightedInternalId = null;
+    
+    // Кэш для canvas и контекста, чтобы не пересоздавать каждый раз
+    let canvas = null;
+    let ctx = null;
+
+    const imageContainer = document.getElementById('imageContainer');
+    const annotationListDiv = document.getElementById('annotationList');
+    const addBtn = document.getElementById('addAnnotationBtn');
+    const loadImageBtn = document.getElementById('loadImageBtn');
+    const smartAlignBtn = document.getElementById('smartAlignBtn');
+
+    function getImageRect() {
+        if (!currentImageElement) return null;
+        return currentImageElement.getBoundingClientRect();
+    }
+
+    function getDisplayNumber(index) {
+        return index + 1;
+    }
+
+    function clearHighlight() {
+        document.querySelectorAll('.circle-marker').forEach(c => c.classList.remove('highlight'));
+        document.querySelectorAll('.dot-marker').forEach(d => d.classList.remove('highlight'));
+        document.querySelectorAll('.annotation-item').forEach(i => i.classList.remove('highlight'));
+        currentHighlightedInternalId = null;
+    }
+
+    function setHighlight(internalId) {
+        clearHighlight();
+        
+        const circle = document.querySelector(`.circle-marker[data-internal-id="${internalId}"]`);
+        if (circle) circle.classList.add('highlight');
+        
+        const dot = document.querySelector(`.dot-marker[data-internal-id="${internalId}"]`);
+        if (dot) dot.classList.add('highlight');
+        
+        const row = document.querySelector(`.annotation-item[data-internal-id="${internalId}"]`);
+        if (row) row.classList.add('highlight');
+        
+        currentHighlightedInternalId = internalId;
+    }
+
+    function toggleHighlight(internalId) {
+        if (currentHighlightedInternalId === internalId) {
+            clearHighlight();
+        } else {
+            setHighlight(internalId);
+        }
+    }
+
+    // Быстрая отрисовка линий без пересоздания canvas
+    function drawLinesFast() {
+        if (!imageLoaded || !wrapper) return;
+        const imgRect = getImageRect();
+        if (!imgRect) return;
+        
+        if (!canvas || !canvas.parentNode) {
+            const oldCanvas = wrapper.querySelector('.annotation-canvas');
+            if (oldCanvas) oldCanvas.remove();
+            
+            canvas = document.createElement('canvas');
+            canvas.className = 'annotation-canvas';
+            wrapper.appendChild(canvas);
+            ctx = canvas.getContext('2d');
+        }
+        
+        canvas.width = imgRect.width;
+        canvas.height = imgRect.height;
+        canvas.style.width = `${imgRect.width}px`;
+        canvas.style.height = `${imgRect.height}px`;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#ffaa44';
+        ctx.lineWidth = 2;
+        
+        for (const ann of annotations) {
+            const fromX = ann.circleX * imgRect.width;
+            const fromY = ann.circleY * imgRect.height;
+            const toX = ann.dotX * imgRect.width;
+            const toY = ann.dotY * imgRect.height;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(toX, toY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffaa44';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(toX, toY, 2, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+        }
+    }
+
+    // Полная перерисовка (когда меняется количество сносок или позиции кругляшей)
+    function renderAll() {
+        if (!imageLoaded || !wrapper) return;
+        const imgRect = getImageRect();
+        if (!imgRect) return;
+
+        // Обновляем или создаем кругляши и точки
+        const existingCircles = new Map();
+        const existingDots = new Map();
+        
+        wrapper.querySelectorAll('.circle-marker').forEach(c => {
+            existingCircles.set(parseInt(c.getAttribute('data-internal-id')), c);
+        });
+        wrapper.querySelectorAll('.dot-marker').forEach(d => {
+            existingDots.set(parseInt(d.getAttribute('data-internal-id')), d);
+        });
+        
+        annotations.forEach((ann, idx) => {
+            const displayNum = getDisplayNumber(idx);
+            const circleAbsX = ann.circleX * imgRect.width;
+            const circleAbsY = ann.circleY * imgRect.height;
+            
+            let circle = existingCircles.get(ann.internalId);
+            if (!circle) {
+                circle = document.createElement('div');
+                circle.className = 'circle-marker';
+                circle.setAttribute('data-internal-id', ann.internalId);
+                makeDraggable(circle, ann, 'circle');
+                circle.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    toggleHighlight(ann.internalId);
+                });
+                wrapper.appendChild(circle);
+            }
+            circle.setAttribute('data-display-num', displayNum);
+            circle.textContent = displayNum;
+            circle.style.left = `${circleAbsX}px`;
+            circle.style.top = `${circleAbsY}px`;
+            
+            const dotAbsX = ann.dotX * imgRect.width;
+            const dotAbsY = ann.dotY * imgRect.height;
+            
+            let dot = existingDots.get(ann.internalId);
+            if (!dot) {
+                dot = document.createElement('div');
+                dot.className = 'dot-marker';
+                dot.setAttribute('data-internal-id', ann.internalId);
+                makeDraggable(dot, ann, 'dot');
+                dot.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    toggleHighlight(ann.internalId);
+                });
+                wrapper.appendChild(dot);
+            }
+            dot.style.left = `${dotAbsX}px`;
+            dot.style.top = `${dotAbsY}px`;
+        });
+        
+        // Удаляем элементы, которых больше нет
+        const currentInternalIds = new Set(annotations.map(a => a.internalId));
+        for (const [id, circle] of existingCircles) {
+            if (!currentInternalIds.has(id)) circle.remove();
+        }
+        for (const [id, dot] of existingDots) {
+            if (!currentInternalIds.has(id)) dot.remove();
+        }
+        
+        drawLinesFast();
+        
+        // Восстанавливаем подсветку
+        if (currentHighlightedInternalId) {
+            const circle = document.querySelector(`.circle-marker[data-internal-id="${currentHighlightedInternalId}"]`);
+            const dot = document.querySelector(`.dot-marker[data-internal-id="${currentHighlightedInternalId}"]`);
+            const row = document.querySelector(`.annotation-item[data-internal-id="${currentHighlightedInternalId}"]`);
+            if (circle) circle.classList.add('highlight');
+            if (dot) dot.classList.add('highlight');
+            if (row) row.classList.add('highlight');
+        }
+    }
+
+    function makeDraggable(element, annotation, type) {
+        let isDragging = false;
+        let startX, startY;
+        let startLeft, startTop;
+        let rafId = null;
+
+        element.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = parseFloat(element.style.left);
+            startTop = parseFloat(element.style.top);
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+            
+            // Используем requestAnimationFrame для плавности
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+
+                const imgRect = getImageRect();
+                if (imgRect) {
+                    newLeft = Math.min(Math.max(0, newLeft), imgRect.width);
+                    newTop = Math.min(Math.max(0, newTop), imgRect.height);
+                }
+
+                element.style.left = `${newLeft}px`;
+                element.style.top = `${newTop}px`;
+
+                if (imgRect) {
+                    if (type === 'circle') {
+                        annotation.circleX = newLeft / imgRect.width;
+                        annotation.circleY = newTop / imgRect.height;
+                    } else {
+                        annotation.dotX = newLeft / imgRect.width;
+                        annotation.dotY = newTop / imgRect.height;
+                    }
+                    drawLinesFast();
+                }
+                rafId = null;
+            });
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            if (getImageRect()) drawLinesFast();
+        };
+    }
+
+    function deleteAnnotationByIndex(indexToDelete) {
+        if (indexToDelete < 0 || indexToDelete >= annotations.length) return;
+        
+        const deletedAnn = annotations[indexToDelete];
+        if (currentHighlightedInternalId === deletedAnn.internalId) {
+            clearHighlight();
+        }
+        
+        annotations.splice(indexToDelete, 1);
+        renderSidebar();
+        renderAll();
+    }
+
+    function showDeleteConfirm(index, displayNum) {
+        pendingDeleteIndex = index;
+        
+        const toast = document.createElement('div');
+        toast.className = 'confirm-toast';
+        toast.innerHTML = `
+            <span>🗑️ Удалить сноску #${displayNum}?</span>
+            <button class="confirm-yes">Да</button>
+            <button class="confirm-no">Нет</button>
+        `;
+        document.body.appendChild(toast);
+        
+        const onYes = () => {
+            deleteAnnotationByIndex(pendingDeleteIndex);
+            toast.remove();
+            pendingDeleteIndex = null;
+        };
+        
+        const onNo = () => {
+            toast.remove();
+            pendingDeleteIndex = null;
+        };
+        
+        toast.querySelector('.confirm-yes').addEventListener('click', onYes);
+        toast.querySelector('.confirm-no').addEventListener('click', onNo);
+        
+        setTimeout(() => {
+            const onClickOutside = (e) => {
+                if (!toast.contains(e.target)) {
+                    toast.remove();
+                    document.removeEventListener('click', onClickOutside);
+                }
+            };
+            document.addEventListener('click', onClickOutside);
+        }, 10);
+    }
+
+    function renderSidebar() {
+        if (!annotations.length) {
+            annotationListDiv.innerHTML = `<div style="color: #aaa; padding: 20px; text-align: center;">Нет сносок<br>Нажмите "Добавить"</div>`;
+            return;
+        }
+        
+        let html = '';
+        annotations.forEach((ann, idx) => {
+            const displayNum = getDisplayNumber(idx);
+            html += `
+                <div class="annotation-item" data-internal-id="${ann.internalId}" data-index="${idx}">
+                    <div class="ann-info">
+                        <span class="ann-id">#${displayNum}</span>
+                        <input type="text" class="ann-name" value="${escapeHtml(ann.name)}" data-internal-id="${ann.internalId}">
+                    </div>
+                    <button class="delete-ann-btn" data-index="${idx}" data-display="${displayNum}" title="Удалить сноску">✕</button>
+                </div>
+            `;
+        });
+        annotationListDiv.innerHTML = html;
+        
+        document.querySelectorAll('.ann-name').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const internalId = parseInt(input.getAttribute('data-internal-id'));
+                const ann = annotations.find(a => a.internalId === internalId);
+                if (ann) ann.name = input.value;
+            });
+            input.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+        
+        document.querySelectorAll('.annotation-item').forEach(row => {
+            const internalId = parseInt(row.getAttribute('data-internal-id'));
+            
+            row.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-ann-btn')) return;
+                if (e.target.classList.contains('ann-name')) return;
+                setHighlight(internalId);
+            });
+            
+            row.addEventListener('dblclick', (e) => {
+                if (e.target.classList.contains('delete-ann-btn')) return;
+                e.stopPropagation();
+                toggleHighlight(internalId);
+            });
+        });
+        
+        document.querySelectorAll('.delete-ann-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = parseInt(btn.getAttribute('data-index'));
+                const displayNum = btn.getAttribute('data-display');
+                showDeleteConfirm(index, displayNum);
+            });
+        });
+        
+        if (currentHighlightedInternalId) {
+            const row = document.querySelector(`.annotation-item[data-internal-id="${currentHighlightedInternalId}"]`);
+            if (row) row.classList.add('highlight');
+        }
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+    }
+
+    function addAnnotation() {
+        if (!imageLoaded) {
+            alert("Сначала загрузите фото модели!");
+            return;
+        }
+        const newInternalId = nextInternalId++;
+        annotations.push({
+            internalId: newInternalId,
+            name: `Деталь ${annotations.length + 1}`,
+            circleX: 0.5,
+            circleY: 0.5,
+            dotX: 0.5 + (Math.random() - 0.5) * 0.7,
+            dotY: 0.5 + (Math.random() - 0.5) * 0.7
+        });
+        renderSidebar();
+        renderAll();
+    }
+
+    function segmentsIntersect(p1, p2, p3, p4) {
+        const orient = (a, b, c) => {
+            const val = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
+            if (Math.abs(val) < 1e-10) return 0;
+            return val > 0 ? 1 : 2;
+        };
+        
+        const o1 = orient(p1, p2, p3);
+        const o2 = orient(p1, p2, p4);
+        const o3 = orient(p3, p4, p1);
+        const o4 = orient(p3, p4, p2);
+        
+        if (o1 !== o2 && o3 !== o4) return true;
+        return false;
+    }
+
+    function preventCircleOverlap(margin, minDistance) {
+        let moved = true;
+        let iter = 0;
+        const maxIter = 100;
+        
+        while (moved && iter < maxIter) {
+            moved = false;
+            iter++;
+            
+            for (let i = 0; i < annotations.length; i++) {
+                for (let j = i + 1; j < annotations.length; j++) {
+                    const a = annotations[i];
+                    const b = annotations[j];
+                    
+                    const dx = a.circleX - b.circleX;
+                    const dy = a.circleY - b.circleY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < minDistance) {
+                        moved = true;
+                        
+                        const aSide = a.circleX < 0.15 ? 'left' : a.circleX > 0.85 ? 'right' : a.circleY < 0.15 ? 'top' : 'bottom';
+                        const bSide = b.circleX < 0.15 ? 'left' : b.circleX > 0.85 ? 'right' : b.circleY < 0.15 ? 'top' : 'bottom';
+                        
+                        if (aSide === bSide) {
+                            if (aSide === 'left' || aSide === 'right') {
+                                const avgY = (a.circleY + b.circleY) / 2;
+                                const offset = minDistance / 1.8;
+                                a.circleY = Math.min(Math.max(margin, avgY + offset), 1 - margin);
+                                b.circleY = Math.min(Math.max(margin, avgY - offset), 1 - margin);
+                            } else {
+                                const avgX = (a.circleX + b.circleX) / 2;
+                                const offset = minDistance / 1.8;
+                                a.circleX = Math.min(Math.max(margin, avgX + offset), 1 - margin);
+                                b.circleX = Math.min(Math.max(margin, avgX - offset), 1 - margin);
+                            }
+                        } else {
+                            const angle = Math.atan2(dy, dx);
+                            const overlap = minDistance - dist;
+                            a.circleX += Math.cos(angle) * overlap / 2;
+                            a.circleY += Math.sin(angle) * overlap / 2;
+                            b.circleX -= Math.cos(angle) * overlap / 2;
+                            b.circleY -= Math.sin(angle) * overlap / 2;
+                            
+                            a.circleX = Math.min(Math.max(margin, a.circleX), 1 - margin);
+                            a.circleY = Math.min(Math.max(margin, a.circleY), 1 - margin);
+                            b.circleX = Math.min(Math.max(margin, b.circleX), 1 - margin);
+                            b.circleY = Math.min(Math.max(margin, b.circleY), 1 - margin);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function smartAlign() {
+        if (!imageLoaded || annotations.length === 0) return;
+
+        const margin = 0.08;
+        const circleMinDistance = 0.09;
+        
+        annotations.forEach(ann => {
+            const dotX = ann.dotX;
+            const dotY = ann.dotY;
+            
+            const distToLeft = dotX;
+            const distToRight = 1 - dotX;
+            const distToTop = dotY;
+            const distToBottom = 1 - dotY;
+            
+            let minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+            let side = 'left';
+            if (minDist === distToRight) side = 'right';
+            else if (minDist === distToTop) side = 'top';
+            else if (minDist === distToBottom) side = 'bottom';
+            
+            ann.tempSide = side;
+        });
+        
+        let groups = { left: [], right: [], top: [], bottom: [] };
+        annotations.forEach(ann => {
+            groups[ann.tempSide].push(ann);
+        });
+        
+        groups.left.sort((a, b) => a.dotY - b.dotY);
+        groups.right.sort((a, b) => a.dotY - b.dotY);
+        groups.top.sort((a, b) => a.dotX - b.dotX);
+        groups.bottom.sort((a, b) => a.dotX - b.dotX);
+        
+        const placeWithEqualSpacing = (group, isVertical, getPos) => {
+            const count = group.length;
+            if (count === 0) return;
+            
+            if (isVertical) {
+                const step = (1 - 2 * margin) / (count + 1);
+                group.forEach((ann, idx) => {
+                    ann.circleY = margin + step * (idx + 1);
+                    ann.circleX = getPos(ann);
+                });
+            } else {
+                const step = (1 - 2 * margin) / (count + 1);
+                group.forEach((ann, idx) => {
+                    ann.circleX = margin + step * (idx + 1);
+                    ann.circleY = getPos(ann);
+                });
+            }
+        };
+        
+        placeWithEqualSpacing(groups.left, true, (ann) => margin);
+        placeWithEqualSpacing(groups.right, true, (ann) => 1 - margin);
+        placeWithEqualSpacing(groups.top, false, (ann) => margin);
+        placeWithEqualSpacing(groups.bottom, false, (ann) => 1 - margin);
+        
+        preventCircleOverlap(margin, circleMinDistance);
+        
+        let improved = true;
+        let iterations = 0;
+        const maxIterations = 30;
+        
+        while (improved && iterations < maxIterations) {
+            improved = false;
+            iterations++;
+            
+            for (let i = 0; i < annotations.length; i++) {
+                for (let j = i + 1; j < annotations.length; j++) {
+                    const a = annotations[i];
+                    const b = annotations[j];
+                    
+                    const line1 = [
+                        { x: a.circleX, y: a.circleY },
+                        { x: a.dotX, y: a.dotY }
+                    ];
+                    const line2 = [
+                        { x: b.circleX, y: b.circleY },
+                        { x: b.dotX, y: b.dotY }
+                    ];
+                    
+                    if (segmentsIntersect(line1[0], line1[1], line2[0], line2[1])) {
+                        improved = true;
+                        
+                        for (let target of [a, b]) {
+                            const oldSide = target.tempSide;
+                            const alternatives = ['left', 'right', 'top', 'bottom'].filter(s => s !== oldSide);
+                            
+                            for (let newSide of alternatives) {
+                                target.tempSide = newSide;
+                                
+                                let newGroups = { left: [], right: [], top: [], bottom: [] };
+                                annotations.forEach(ann => {
+                                    newGroups[ann.tempSide].push(ann);
+                                });
+                                
+                                newGroups.left.sort((a, b) => a.dotY - b.dotY);
+                                newGroups.right.sort((a, b) => a.dotY - b.dotY);
+                                newGroups.top.sort((a, b) => a.dotX - b.dotX);
+                                newGroups.bottom.sort((a, b) => a.dotX - b.dotX);
+                                
+                                placeWithEqualSpacing(newGroups.left, true, (ann) => margin);
+                                placeWithEqualSpacing(newGroups.right, true, (ann) => 1 - margin);
+                                placeWithEqualSpacing(newGroups.top, false, (ann) => margin);
+                                placeWithEqualSpacing(newGroups.bottom, false, (ann) => 1 - margin);
+                                
+                                preventCircleOverlap(margin, circleMinDistance);
+                                
+                                let hasIntersection = false;
+                                for (let k = 0; k < annotations.length && !hasIntersection; k++) {
+                                    for (let l = k + 1; l < annotations.length && !hasIntersection; l++) {
+                                        const l1 = [
+                                            { x: annotations[k].circleX, y: annotations[k].circleY },
+                                            { x: annotations[k].dotX, y: annotations[k].dotY }
+                                        ];
+                                        const l2 = [
+                                            { x: annotations[l].circleX, y: annotations[l].circleY },
+                                            { x: annotations[l].dotX, y: annotations[l].dotY }
+                                        ];
+                                        if (segmentsIntersect(l1[0], l1[1], l2[0], l2[1])) {
+                                            hasIntersection = true;
+                                        }
+                                    }
+                                }
+                                
+                                if (!hasIntersection) {
+                                    groups = newGroups;
+                                    break;
+                                } else {
+                                    target.tempSide = oldSide;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        renderAll();
+    }
+
+    function loadImage(file) {
+        if (!file.type.startsWith('image/')) {
+            alert("Загрузите изображение");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                imageContainer.innerHTML = '';
+                wrapper = document.createElement('div');
+                wrapper.className = 'canvas-wrapper';
+                wrapper.style.position = 'relative';
+                wrapper.style.display = 'inline-block';
+                const imgElement = document.createElement('img');
+                imgElement.id = 'modelImage';
+                imgElement.src = e.target.result;
+                imgElement.style.maxWidth = '95%';
+                imgElement.style.maxHeight = '95%';
+                imgElement.style.display = 'block';
+                wrapper.appendChild(imgElement);
+                imageContainer.appendChild(wrapper);
+                currentImageElement = imgElement;
+                imageLoaded = true;
+                canvas = null;
+                ctx = null;
+                renderAll();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function setupDragAndDrop() {
+        imageContainer.addEventListener('dragover', (e) => e.preventDefault());
+        imageContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) loadImage(file);
+        });
+    }
+
+    loadImageBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = () => { if (input.files[0]) loadImage(input.files[0]); };
+        input.click();
+    });
+
+    addBtn.addEventListener('click', addAnnotation);
+    smartAlignBtn.addEventListener('click', smartAlign);
+    
+    setupDragAndDrop();
+    window.addEventListener('resize', () => { if (imageLoaded) renderAll(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Режимы отображения STEP</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="app-shell">
+    <canvas id="viewport"></canvas>
+
+    <div class="hud">
+      <div class="toolbar">
+        <input id="file-input" class="sr-only" type="file" accept=".step,.stp,model/step,application/step">
+        <button id="file-picker-btn" type="button">Загрузить STEP/STP</button>
+        <span id="file-name" class="file-name">Файл не выбран</span>
+        <button id="fit-view-btn" type="button">Подогнать</button>
+        <button class="mode-btn active" data-mode="base" type="button">Базовая</button>
+        <button class="mode-btn" data-mode="gray" type="button">Серая с контурами</button>
+        <button class="mode-btn" data-mode="transparent" type="button">Прозрачная с контурами</button>
+        <button class="mode-btn" data-mode="tint30" type="button">Цветная 30%</button>
+        <button class="mode-btn" data-mode="clay" type="button">Светлая техническая</button>
+      </div>
+
+      <div id="status" class="status">Ожидание STEP/STP файла.</div>
+    </div>
+  </div>
+
+  <script src="./vendor/occt-import-js/occt-import-js.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D</title>
+    <style>
+        /* Простые стили, чтобы было красиво */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #1e1f22;
+            color: #e5e5e5;
+        }
+
+        /* Панель */
+        .panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 260px;
+            padding: 16px;
+
+            background: rgba(35, 35, 38, 0.96);
+            border: 1px solid #3a3a3d;
+            border-radius: 8px;
+
+            z-index: 100;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        }
+
+        /* Заголовок */
+        .panel h2 {
+            margin: 0 0 14px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        /* Кнопка загрузки */
+        .file-btn {
+            background: #3a3f46;
+            color: #ffffff;
+
+            padding: 10px;
+            text-align: center;
+
+            border-radius: 6px;
+            cursor: pointer;
+
+            margin-bottom: 14px;
+            transition: background 0.15s;
+        }
+
+        .file-btn:hover {
+            background: #4a5058;
+        }
+
+        input {
+            display: none;
+        }
+
+        /* Блок информации */
+        .info {
+            background: #2a2c30;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 14px;
+        }
+
+        /* Координаты */
+        .coord-input {
+            margin-top: 10px;
+        }
+
+        .coord-input div {
+            margin-bottom: 8px;
+        }
+
+        .coord-input label {
+            display: inline-block;
+            width: 20px;
+            color: #bdbdbd;
+        }
+
+        .coord-input input {
+            display: inline-block;
+            width: 80px;
+
+            background: #1f2023;
+            color: #e5e5e5;
+
+            border: 1px solid #444;
+            border-radius: 4px;
+
+            padding: 5px;
+        }
+
+        /* Кнопки */
+        button {
+            background: #3f444b;
+            color: white;
+
+            border: none;
+            border-radius: 6px;
+
+            padding: 8px 14px;
+            cursor: pointer;
+
+            transition: background 0.15s;
+        }
+
+        button:hover {
+            background: #555c66;
+        }
+
+        /* Кнопки перемещения */
+        .move-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .move-buttons button {
+            width: 100%;
+            height: 42px;
+            font-size: 14px;
+            font-weight: 500;
+
+            background: #363a40;
+            color: #e5e5e5;
+        }
+
+        /* Статус */
+        .status {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #bcbcbc;
+            text-align: center;
+        }
+
+        /* Выбранный объект */
+        .selected {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        /* Ссылка-пример */
+        .example {
+            color: #cfcfcf;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .example:hover {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h2>3D</h2>
+        
+        <!-- Кнопка загрузки файла -->
+        <div class="file-btn" onclick="document.getElementById('fileInput').click()">
+            Загрузить 3D модель (GLB/GLTF)
+        </div>
+        <input type="file" id="fileInput" accept=".glb,.gltf">
+        
+        <!-- Информация о выбранной детали -->
+        <div class="info">
+            <div>Выбрана деталь: <span id="selectedName" class="selected">—</span></div>
+            
+            <div class="coord-input">
+                <div>Координаты:</div>
+                <div>
+                    <label style="color:#ff8888;">X:</label>
+                    <input type="number" id="posX" step="0.05" value="0" disabled>
+                </div>
+                <div>
+                    <label style="color:#88ff88;">Y:</label>
+                    <input type="number" id="posY" step="0.05" value="0" disabled>
+                </div>
+                <div>
+                    <label style="color:#8888ff;">Z:</label>
+                    <input type="number" id="posZ" step="0.05" value="0" disabled>
+                </div>
+                <button id="applyBtn" style="width:100%; margin-top:5px;" disabled>Применить</button>
+            </div>
+        </div>
+        
+        <!-- Кнопки для перемещения -->
+        <div class="move-buttons">
+            <button id="moveXP" style="background:#ff4444;">→X</button>
+            <button id="moveXM" style="background:#ff4444;">←X</button>
+            <button id="moveYP" style="background:#44ff44; color:black;">↑Y</button>
+            <button id="moveYM" style="background:#44ff44; color:black;">↓Y</button>
+            <button id="moveZP" style="background:#4444ff;">↗Z</button>
+            <button id="moveZM" style="background:#4444ff;">↙Z</button>
+        </div>
+        
+        <!-- Статус -->
+        <div class="status" id="status">Готов к работе</div>
+        <div style="font-size: 11px; text-align:center; margin-top:10px;">
+        </div>
+    </div>
+
+    <!-- Подключаем Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        // Импортируем всё что нужно
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { TransformControls } from 'three/addons/controls/TransformControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // ========== СОЗДАЁМ СЦЕНУ ==========
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x202124);
+        scene.fog = new THREE.FogExp2(0x202124, 0.005);
+
+        // ========== КАМЕРА ==========
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 8);
+        camera.lookAt(0, 0, 0);
+
+        // ========== ОТРИСОВЩИК ==========
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // включаем тени
+        document.body.appendChild(renderer.domElement);
+
+        // ========== УПРАВЛЕНИЕ КАМЕРОЙ ==========
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // плавность
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = true;
+        controls.maxDistance = 20;
+
+        // ========== ОСВЕЩЕНИЕ ==========
+        // Свет со всех сторон
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        
+        // Главный свет
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+        mainLight.position.set(2, 5, 3);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+        
+        // Дополнительный свет сзади
+        const backLight = new THREE.PointLight(0x4466cc, 0.3);
+        backLight.position.set(-2, 1, -3);
+        scene.add(backLight);
+        
+        // Подсветка спереди
+        const fillLight = new THREE.PointLight(0xffaa66, 0.3);
+        fillLight.position.set(1, 2, 2);
+        scene.add(fillLight);
+
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ШТУКИ ==========
+        // Сетка для ориентира
+        const gridHelper = new THREE.GridHelper(15, 20, 0x555555, 0x333333);
+        gridHelper.position.y = -0.8;
+        scene.add(gridHelper);
+        
+        // Оси координат
+        const axesHelper = new THREE.AxesHelper(5);
+        axesHelper.material.transparent = true;
+        axesHelper.material.opacity = 0.2;
+        scene.add(axesHelper);
+
+        // ========== ПЕРЕМЕННЫЕ ==========
+        let currentModel = null;      // текущая загруженная модель
+        let selectedObject = null;    // выбранная деталь
+        let originalColors = new Map(); // для сохранения цветов
+        let raycaster = new THREE.Raycaster(); // для кликов
+        let mouse = new THREE.Vector2(); // позиция мыши
+        let loader = new GLTFLoader(); // загрузчик моделей
+        
+        // Переменные для TransformControls (для перемещения)
+        let transformControls = null;
+
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+        
+        // Функция для получения всех материалов объекта
+        function getAllMaterials(obj) {
+            const materials = [];
+            obj.traverse(node => {
+                if (node.isMesh && node.material) {
+                    if (Array.isArray(node.material)) {
+                        node.material.forEach(mat => {
+                            if (mat && !materials.includes(mat)) materials.push(mat);
+                        });
+                    } else {
+                        if (!materials.includes(node.material)) materials.push(node.material);
+                    }
+                }
+            });
+            return materials;
+        }
+        
+        // Сохраняем исходные цвета объекта
+        function saveOriginalColors(mesh) {
+            if (!originalColors.has(mesh)) {
+                const materials = getAllMaterials(mesh);
+                const colors = materials.map(mat => mat.color ? mat.color.clone() : null);
+                originalColors.set(mesh, { materials, colors });
+            }
+        }
+        
+        // Выделяем объект жёлтым цветом
+        function highlightObject(obj) {
+            if (!obj || !obj.isMesh) return;
+            
+            // Убираем выделение с предыдущего объекта
+            if (selectedObject && selectedObject !== obj) {
+                resetHighlight(selectedObject);
+            }
+            
+            selectedObject = obj;
+            saveOriginalColors(obj);
+            
+            // Красим в жёлтый
+            const materials = getAllMaterials(obj);
+            materials.forEach(mat => {
+                if (mat && mat.color) {
+                    mat.color.setHex(0xffcc00);
+                }
+            });
+            
+            // Обновляем интерфейс
+            document.getElementById('selectedName').textContent = obj.name || "Деталь";
+            updatePositionInputs();
+            
+            // Подключаем инструмент перемещения
+            if (transformControls) {
+                transformControls.attach(obj);
+            }
+            
+            document.getElementById('status').innerHTML = `Выбрано: ${obj.name || "Деталь"}`;
+        }
+        
+        // Снимаем выделение
+        function resetHighlight(obj) {
+            const saved = originalColors.get(obj);
+            if (saved) {
+                saved.materials.forEach((mat, i) => {
+                    if (mat && mat.color && saved.colors[i]) {
+                        mat.color.copy(saved.colors[i]);
+                    }
+                });
+                originalColors.delete(obj);
+            }
+        }
+        
+        // Очищаем выбор
+        function clearSelection() {
+            if (selectedObject) {
+                resetHighlight(selectedObject);
+                selectedObject = null;
+                document.getElementById('selectedName').textContent = "—";
+                if (transformControls) transformControls.detach();
+                document.getElementById('status').innerHTML = "Ничего не выбрано";
+                updatePositionInputs();
+            }
+        }
+        
+        // Обновляем поля с координатами
+        function updatePositionInputs() {
+            const posX = document.getElementById('posX');
+            const posY = document.getElementById('posY');
+            const posZ = document.getElementById('posZ');
+            const applyBtn = document.getElementById('applyBtn');
+            
+            if (selectedObject) {
+                posX.value = selectedObject.position.x.toFixed(3);
+                posY.value = selectedObject.position.y.toFixed(3);
+                posZ.value = selectedObject.position.z.toFixed(3);
+                posX.disabled = false;
+                posY.disabled = false;
+                posZ.disabled = false;
+                applyBtn.disabled = false;
+            } else {
+                posX.disabled = true;
+                posY.disabled = true;
+                posZ.disabled = true;
+                applyBtn.disabled = true;
+            }
+        }
+        
+        // Перемещаем выбранную деталь
+        function moveSelected(dx, dy, dz) {
+            if (!selectedObject) {
+                document.getElementById('status').innerHTML = "⚠️ Сначала выберите деталь!";
+                return;
+            }
+            
+            selectedObject.position.x += dx;
+            selectedObject.position.y += dy;
+            selectedObject.position.z += dz;
+            
+            if (transformControls && transformControls.object === selectedObject) {
+                transformControls.update();
+            }
+            
+            updatePositionInputs();
+            document.getElementById('status').innerHTML = `Позиция: (${selectedObject.position.x.toFixed(2)}, ${selectedObject.position.y.toFixed(2)}, ${selectedObject.position.z.toFixed(2)})`;
+        }
+        
+        // Устанавливаем точные координаты
+        function setSelectedPosition(x, y, z) {
+            if (selectedObject) {
+                selectedObject.position.set(x, y, z);
+                if (transformControls && transformControls.object === selectedObject) {
+                    transformControls.update();
+                }
+                updatePositionInputs();
+                document.getElementById('status').innerHTML = `Перемещено в (${x}, ${y}, ${z})`;
+            }
+        }
+        
+        // ========== ОБРАБОТЧИК КЛИКА ==========
+        function onMouseClick(event) {
+            if (!currentModel) return;
+            
+            // Получаем координаты клика
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            // Пускаем луч
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Собираем все детали модели
+            const meshes = [];
+            currentModel.traverse(node => {
+                if (node.isMesh) meshes.push(node);
+            });
+            
+            // Проверяем пересечения
+            const intersects = raycaster.intersectObjects(meshes);
+            
+            if (intersects.length > 0) {
+                highlightObject(intersects[0].object);
+            } else {
+                clearSelection();
+            }
+        }
+        
+        // ========== ЗАГРУЗКА МОДЕЛИ ==========
+        function loadModel(url, name) {
+            document.getElementById('status').innerHTML = "Загрузка модели...";
+            
+            loader.load(url, (gltf) => {
+                // Удаляем старую модель если есть
+                if (currentModel) {
+                    scene.remove(currentModel);
+                    // Очищаем память
+                    currentModel.traverse(obj => {
+                        if (obj.isMesh) {
+                            if (obj.geometry) obj.geometry.dispose();
+                            if (obj.material) {
+                                if (Array.isArray(obj.material)) {
+                                    obj.material.forEach(m => m.dispose());
+                                } else {
+                                    obj.material.dispose();
+                                }
+                            }
+                        }
+                    });
+                    originalColors.clear();
+                    clearSelection();
+                }
+                
+                currentModel = gltf.scene;
+                currentModel.name = name;
+                
+                // Центрируем модель (делаем чтобы она была по центру)
+                const bbox = new THREE.Box3().setFromObject(currentModel);
+                if (!bbox.isEmpty()) {
+                    const center = bbox.getCenter(new THREE.Vector3());
+                    const size = bbox.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 2.5 / maxDim;
+                    currentModel.scale.set(scale, scale, scale);
+                    currentModel.position.sub(center.multiplyScalar(scale));
+                }
+                
+                scene.add(currentModel);
+                
+                // Настраиваем камеру
+                controls.target.set(0, 0, 0);
+                camera.position.set(4, 3, 6);
+                controls.update();
+                
+                // Считаем количество деталей
+                let meshCount = 0;
+                currentModel.traverse(n => { if (n.isMesh) meshCount++; });
+                
+                document.getElementById('status').innerHTML = `Загружено: ${name}<br>Деталей: ${meshCount}`;
+                clearSelection();
+                
+            }, undefined, (error) => {
+                console.error(error);
+                document.getElementById('status').innerHTML = `Ошибка: ${error.message}`;
+            });
+        }
+        
+        // ========== ЗАГРУЗКА ПРИМЕРА ==========
+        window.loadExample = () => {
+            const exampleUrl = 'https://threejs.org/examples/models/gltf/RobotExpressive.glb';
+            loadModel(exampleUrl, 'Робот (пример)');
+        };
+        
+        // ========== НАСТРАИВАЕМ КНОПКИ ==========
+        
+        // Загрузка файла
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const url = URL.createObjectURL(file);
+                loadModel(url, file.name);
+            }
+        });
+        
+        // Кнопки перемещения
+        document.getElementById('moveXP').onclick = () => moveSelected(0.1, 0, 0);
+        document.getElementById('moveXM').onclick = () => moveSelected(-0.1, 0, 0);
+        document.getElementById('moveYP').onclick = () => moveSelected(0, 0.1, 0);
+        document.getElementById('moveYM').onclick = () => moveSelected(0, -0.1, 0);
+        document.getElementById('moveZP').onclick = () => moveSelected(0, 0, 0.1);
+        document.getElementById('moveZM').onclick = () => moveSelected(0, 0, -0.1);
+        
+        // Кнопка применения координат
+        document.getElementById('applyBtn').onclick = () => {
+            if (selectedObject) {
+                const x = parseFloat(document.getElementById('posX').value);
+                const y = parseFloat(document.getElementById('posY').value);
+                const z = parseFloat(document.getElementById('posZ').value);
+                if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+                    setSelectedPosition(x, y, z);
+                }
+            }
+        };
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ TRANSFORM CONTROLS ==========
+        transformControls = new TransformControls(camera, renderer.domElement);
+        transformControls.addEventListener('dragging-changed', (event) => {
+            controls.enabled = !event.value;
+        });
+        transformControls.addEventListener('objectChange', () => {
+            if (transformControls.object) {
+                updatePositionInputs();
+            }
+        });
+        scene.add(transformControls);
+        
+        // ========== ЗАПУСКАЕМ ОБРАБОТЧИК КЛИКОВ ==========
+        renderer.domElement.addEventListener('click', onMouseClick);
+        
+        // ========== АНИМАЦИЯ ==========
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // обновляем камеру
+            renderer.render(scene, camera); // рисуем сцену
+        }
+        
+        animate();
+        
+        // ========== ПРИ ИЗМЕНЕНИИ РАЗМЕРА ОКНА ==========
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // ========== ПРИВЕТСТВИЕ ==========
+        console.log('Программа запущена!');
+        document.getElementById('status').innerHTML = "Загрузите модель или нажмите 'Загрузить пример'";
+    </script>
+</body>
+</html>

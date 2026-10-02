@@ -141,3 +141,13 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# CAD tools artifacts
+*.zip
+node_modules/
+dist/
+build/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
